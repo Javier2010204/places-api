@@ -1,6 +1,5 @@
 const Place = require('../models/Place');
 const upload = require('../config/upload');
-const uploader = require('../models/Uploader');
 
 function find(req, res, next){
     Place.findById(req.params.id).then(place => {
@@ -29,7 +28,8 @@ function create(req, res, next){
         description: req.body.description,
         acceptsCreditCard: req.body.acceptsCreditCard,
         openHour: req.body.openHour,
-        closeHour: req.body.closeHour
+        closeHour: req.body.closeHour,
+        address: req.body.address
     }).then(doc=>{
         req.place = doc
         next();
@@ -47,7 +47,7 @@ function show(req, res){
 function update(req, res){
     //actualizar un lugar
 
-    let attributes = ['title', 'description', 'openHour', 'closeHour', 'acceptsCreditCard']
+    let attributes = ['title', 'description', 'openHour', 'closeHour', 'acceptsCreditCard', 'address']
     let placeParams = {}
 
     attributes.forEach(attr=>{
@@ -86,16 +86,28 @@ function multerMiddleware(){
 
 function saveImage(req, res){
     if(req.place){
-        if(req.files && req.files.avatar){
-            const path = req.files.avatar[0].path;
-            req.place.updateAvatar(path, 'avatar').then(result=>{
-                console.log(result);
-                res.json(req.place);
-            }).catch(err=>{
-                console.log(err);
-                res.json(err);
-            })
-        }
+        const files = ['avatar','cover'];
+        const promises = [];
+
+        files.forEach(imageType=>{
+
+            console.log(imageType);
+
+            if(req.files && req.files[imageType]){
+                const path = req.files[imageType][0].path;
+                promises.push(req.place.updateImage(path,imageType));
+            }
+
+        })
+
+        Promise.all(promises).then(results => {
+            console.log(results);
+            res.json(req.place);
+        }).catch(err => {
+            console.log(err);
+            res.json(err);
+        });
+
     }else{
         res.status(422).json({
             error: req.error || 'No se pudo guardar el lugar'
